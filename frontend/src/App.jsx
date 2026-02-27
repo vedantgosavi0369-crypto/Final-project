@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AdminPortal from './pages/AdminPortal';
 import PasswordCreation from './pages/PasswordCreation';
+import DoctorProfile from './components/DoctorProfile';
 import CursorFollower from './components/CursorFollower';
 import HelpSidebar from './components/HelpSidebar';
 import SplashScreen from './components/SplashScreen';
@@ -31,6 +32,7 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin" element={<AdminPortal />} />
+          <Route path="/doctor-profile" element={<DoctorProfile />} />
           <Route path="/password-creation" element={<PasswordCreation />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

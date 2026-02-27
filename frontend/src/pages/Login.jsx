@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { User, ArrowLeft, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 
 export default function Login() {
@@ -18,6 +18,9 @@ export default function Login() {
     const [otp, setOtp] = useState('');
     const [otpError, setOtpError] = useState('');
     const [errors, setErrors] = useState({ fullName: '', email: '', password: '', confirm: '' });
+
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Validate Name (only alphabets and spaces allowed)
     const validateNameInput = (value) => {
@@ -109,7 +112,11 @@ export default function Login() {
 
     const handleRegister = (e) => {
         e.preventDefault();
-        setFormMode('register');
+        if (role === 'doctor') {
+            navigate('/doctor-profile');
+        } else {
+            setFormMode('register');
+        }
     };
 
     const handleRegisterSubmit = async (e) => {
@@ -148,12 +155,8 @@ export default function Login() {
                     setErrors({ ...errors, email: err.message });
                 }
             } else if (role === 'doctor') {
-                alert("Registered as applicant. Pending Admin verification.");
-                setFormMode('initial');
-                setEmail('');
-                setFullName('');
-                setPassword('');
-                setConfirmPassword('');
+                // Navigate directly to the DoctorProfile onboarding component
+                navigate('/doctor-profile');
             }
         }
     };
@@ -398,16 +401,25 @@ export default function Login() {
 
                                 <div className="space-y-1 w-full">
                                     <label className="text-sm font-semibold text-[#1A3668]/80">Password</label>
-                                    <input
-                                        type="password"
-                                        value={password}
-                                        onChange={(e) => {
-                                            setPassword(e.target.value);
-                                            if (errors.password) setErrors({ ...errors, password: '' });
-                                        }}
-                                        placeholder="••••••••"
-                                        className={`w-full px-4 py-2.5 rounded-lg border bg-white/50 backdrop-blur-sm focus:ring-2 focus:outline-none transition-all ${errors.password ? 'border-red-400 focus:border-red-400 focus:ring-red-200' : 'border-[#1A3668]/20 focus:border-[#1A3668] focus:ring-[#1A3668]/20'}`}
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type={showPassword ? "text" : "password"}
+                                            value={password}
+                                            onChange={(e) => {
+                                                setPassword(e.target.value);
+                                                if (errors.password) setErrors({ ...errors, password: '' });
+                                            }}
+                                            placeholder="••••••••"
+                                            className={`w-full px-4 py-2.5 pr-10 rounded-lg border bg-white/50 backdrop-blur-sm focus:ring-2 focus:outline-none transition-all ${errors.password ? 'border-red-400 focus:border-red-400 focus:ring-red-200' : 'border-[#1A3668]/20 focus:border-[#1A3668] focus:ring-[#1A3668]/20'}`}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-[#1A3668]"
+                                        >
+                                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                        </button>
+                                    </div>
                                     {errors.password && <p className="text-xs text-red-500 font-medium">{errors.password}</p>}
 
                                     {formMode === 'register' && password && (
@@ -426,7 +438,29 @@ export default function Login() {
                                 </div>
 
                                 {formMode === 'register' &&
-                                    renderInput('password', confirmPassword, setConfirmPassword, '••••••••', errors.confirm, 'Confirm Password')
+                                    <div className="space-y-1 w-full">
+                                        <label className="text-sm font-semibold text-[#1A3668]/80">Confirm Password</label>
+                                        <div className="relative">
+                                            <input
+                                                type={showConfirmPassword ? "text" : "password"}
+                                                value={confirmPassword}
+                                                onChange={(e) => {
+                                                    setConfirmPassword(e.target.value);
+                                                    if (errors.confirm) setErrors({ ...errors, confirm: '' });
+                                                }}
+                                                placeholder="••••••••"
+                                                className={`w-full px-4 py-2.5 pr-10 rounded-lg border bg-white/50 backdrop-blur-sm focus:ring-2 focus:outline-none transition-all ${errors.confirm ? 'border-red-400 focus:border-red-400 focus:ring-red-200' : 'border-[#1A3668]/20 focus:border-[#1A3668] focus:ring-[#1A3668]/20'}`}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-[#1A3668]"
+                                            >
+                                                {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                            </button>
+                                        </div>
+                                        {errors.confirm && <p className="text-xs text-red-500 font-medium">{errors.confirm}</p>}
+                                    </div>
                                 }
 
                                 <motion.button
