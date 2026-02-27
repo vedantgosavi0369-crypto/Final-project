@@ -2,10 +2,11 @@ import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
     User, Award, Briefcase, MapPin, Phone, Clock, Stethoscope,
-    Building, Mail, CheckCircle, UploadCloud, File, X, Check, Loader2
-} from 'lucide-react';
+    Building, Mail, CheckCircle, UploadCloud, File, X, Check, Loader2, ArrowLeft, ShieldAlert, ChevronDown, Search
+} from 'lucide-react'; import { useNavigate } from 'react-router-dom';
 
 export default function DoctorProfile() {
+    const navigate = useNavigate();
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [emailVerified, setEmailVerified] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
@@ -14,18 +15,56 @@ export default function DoctorProfile() {
     const [dragActive, setDragActive] = useState(false);
     const fileInputRef = useRef(null);
 
+    // Country Code State
+    const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+    const [countrySearch, setCountrySearch] = useState('');
+    const [selectedCountry, setSelectedCountry] = useState({ code: '+91', flag: '🇮🇳', name: 'India' });
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const dropdownRef = useRef(null);
+
+    // Close dropdown when clicking outside
+    React.useEffect(() => {
+        function handleClickOutside(event) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setShowCountryDropdown(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const countries = [
+        { code: '+1', flag: '🇺🇸', name: 'United States' },
+        { code: '+44', flag: '🇬🇧', name: 'United Kingdom' },
+        { code: '+91', flag: '🇮🇳', name: 'India' },
+        { code: '+61', flag: '🇦🇺', name: 'Australia' },
+        { code: '+81', flag: '🇯🇵', name: 'Japan' },
+        { code: '+49', flag: '🇩🇪', name: 'Germany' },
+        { code: '+33', flag: '🇫🇷', name: 'France' },
+        { code: '+39', flag: '🇮🇹', name: 'Italy' },
+        { code: '+55', flag: '🇧🇷', name: 'Brazil' },
+        { code: '+86', flag: '🇨🇳', name: 'China' },
+        { code: '+971', flag: '🇦🇪', name: 'United Arab Emirates' },
+        { code: '+65', flag: '🇸🇬', name: 'Singapore' },
+    ];
+
+    const filteredCountries = countries.filter(c =>
+        c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+        c.code.includes(countrySearch)
+    );
+
     // Initial state matching user requirements
     const [formData, setFormData] = useState({
-        name: 'Dr. Rahul Sharma',
-        qualification: 'MBBS, MD (General Medicine)',
-        specialization: 'General Physician',
-        experience: '8 Years',
-        hospital: 'Sunshine Care Clinic',
-        location: 'Mumbai',
-        contact: '+91-9XXXXXXXXX',
+        name: '',
+        qualification: '',
+        specialization: '',
+        experience: '',
+        hospital: '',
+        location: '',
+        contact: '',
         email: '',
         certificationNumber: '',
-        availableTime: '10:00 AM – 6:00 PM (Mon–Sat)', // Reverting to plain string to avoid backend breakages
+        availableTime: '',
         services: '',
         medicalDocument: null
     });
@@ -37,6 +76,20 @@ export default function DoctorProfile() {
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handlePhoneChange = (e) => {
+        const val = e.target.value.replace(/\D/g, ''); // Only allow numbers
+        setPhoneNumber(val);
+        // Combine seamlessly for backend compatibility
+        setFormData({ ...formData, contact: `${selectedCountry.code}-${val}` });
+    };
+
+    const selectCountry = (country) => {
+        setSelectedCountry(country);
+        setShowCountryDropdown(false);
+        setCountrySearch('');
+        setFormData({ ...formData, contact: `${country.code}-${phoneNumber}` });
     };
 
     const handleVerifyEmail = async () => {
@@ -129,168 +182,52 @@ export default function DoctorProfile() {
 
     if (isSubmitted) {
         return (
-            <div className="min-h-screen bg-gray-50 p-6 md:p-12 font-sans">
-                <div className="max-w-4xl mx-auto space-y-8">
-                    {/* Header Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden"
-                    >
-                        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-blue-50 to-indigo-50 -z-10"></div>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 font-sans">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-white rounded-3xl p-10 shadow-xl border border-gray-100 max-w-lg w-full text-center relative overflow-hidden"
+                >
+                    <div className="absolute top-0 left-0 w-full h-2 bg-[#1A3668]"></div>
 
-                        <div className="w-32 h-32 bg-white rounded-full p-2 shadow-md">
-                            <div className="w-full h-full bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
-                                <User size={56} strokeWidth={1.5} />
-                            </div>
-                        </div>
-
-                        <div className="flex-1 text-center md:text-left">
-                            <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-                                <h1 className="text-3xl font-bold text-gray-900">{formData.name}</h1>
-                                <CheckCircle className="text-blue-500 w-6 h-6" />
-                            </div>
-                            <p className="text-lg text-gray-600 font-medium mb-4">{formData.specialization}</p>
-
-                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-                                <span className="flex items-center gap-1.5 text-sm font-medium bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
-                                    <Award className="w-4 h-4" /> {formData.qualification}
-                                </span>
-                                <span className="flex items-center gap-1.5 text-sm font-medium bg-green-50 text-green-700 px-3 py-1 rounded-full">
-                                    <Briefcase className="w-4 h-4" /> {formData.experience} Experience
-                                </span>
-                                {formData.certificationNumber && (
-                                    <span className="flex items-center gap-1.5 text-sm font-medium bg-purple-50 text-purple-700 px-3 py-1 rounded-full">
-                                        <Award className="w-4 h-4" /> Cert: {formData.certificationNumber}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={() => setIsSubmitted(false)}
-                            className="absolute top-6 right-6 px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                        >
-                            Edit Profile
-                        </button>
-                    </motion.div>
-
-                    {/* Info Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Clinic Info */}
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                            <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 h-full">
-                                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                    <Building className="text-blue-500" /> Clinic Details
-                                </h3>
-                                <div className="space-y-6">
-                                    <div className="flex gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                                            <Building className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500">Clinic Name</p>
-                                            <p className="text-gray-900 font-semibold">{formData.hospital}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                                            <MapPin className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500">Location</p>
-                                            <p className="text-gray-900 font-semibold">{formData.location}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-4 border-t border-gray-100 pt-6">
-                                        <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 shrink-0">
-                                            <Clock className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500">Availability (Mon-Sat)</p>
-                                            <p className="text-gray-900 font-semibold">{formData.availableTime}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-
-                        {/* Contact Info */}
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                            <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 h-full">
-                                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                    <Phone className="text-blue-500" /> Contact Info
-                                </h3>
-                                <div className="space-y-6">
-                                    <div className="flex gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                                            <Phone className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500">Phone</p>
-                                            <p className="text-gray-900 font-semibold">{formData.contact}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                                            <Mail className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500">Email</p>
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-gray-900 font-semibold">{formData.email || 'Not provided'}</p>
-                                                {emailVerified && <CheckCircle className="w-4 h-4 text-green-500" />}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {formData.medicalDocument && (
-                                        <div className="flex gap-4 border-t border-gray-100 pt-6">
-                                            <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-                                                <File className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-500">Medical Document</p>
-                                                <p className="text-gray-900 font-semibold">{formData.medicalDocument.name}</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </motion.div>
+                    <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-white shadow-sm">
+                        <ShieldAlert className="w-12 h-12 text-[#1A3668]" />
                     </div>
 
-                    {/* Services */}
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                        <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-                            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                <Stethoscope className="text-blue-500" /> Services Offered
-                            </h3>
-                            {formData.services ? (
-                                <div className="flex flex-wrap gap-3">
-                                    {formData.services.split(',').map((service, idx) => {
-                                        const srv = service.trim();
-                                        if (!srv) return null;
-                                        return (
-                                            <div key={idx} className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2 rounded-xl font-medium text-sm flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                                                {srv}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <p className="text-gray-500 text-sm">No services listed yet.</p>
-                            )}
-                        </div>
-                    </motion.div>
+                    <h2 className="text-3xl font-bold text-gray-900 mb-4">Application Submitted</h2>
 
-                </div>
+                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-6 text-left">
+                        <p className="text-gray-700 leading-relaxed mb-2">
+                            Dear <strong>{formData.name || 'Doctor'}</strong>, your registration application has been successfully sent to the administration team.
+                        </p>
+                        <p className="text-gray-700 leading-relaxed">
+                            For security purposes, an Admin must verify your credentials and medical documents before your account is activated. You will receive an email once your profile is verified, after which you can log in.
+                        </p>
+                    </div>
+
+                    <button
+                        onClick={() => navigate('/')}
+                        className="w-full bg-[#1A3668] hover:bg-[#12264a] text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg flex items-center justify-center gap-2"
+                    >
+                        <ArrowLeft className="w-5 h-5" /> Return to Login Page
+                    </button>
+
+                </motion.div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 flex justify-center">
-            <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden shadow-blue-900/5">
+        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 flex justify-center relative">
+            <button
+                onClick={() => navigate('/')}
+                className="absolute top-6 left-6 flex items-center gap-2 text-gray-600 hover:text-[#1A3668] transition-colors font-medium bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200"
+            >
+                <ArrowLeft className="w-5 h-5" />
+                Back to Login
+            </button>
+
+            <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden shadow-blue-900/5 mt-8 md:mt-0">
 
                 {/* Header */}
                 <div className="bg-[#1A3668] px-8 py-6 text-white text-center">
@@ -308,22 +245,22 @@ export default function DoctorProfile() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1">
                                 <label className="text-sm font-semibold text-gray-700">Full Name</label>
-                                <input type="text" name="name" value={formData.name} onChange={handleChange} required
+                                <input type="text" name="name" value={formData.name} onChange={handleChange} required placeholder="e.g. Dr. Jane Smith"
                                     className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#1A3668] focus:border-transparent transition-all" />
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-semibold text-gray-700">Qualification</label>
-                                <input type="text" name="qualification" value={formData.qualification} onChange={handleChange} required
+                                <input type="text" name="qualification" value={formData.qualification} onChange={handleChange} required placeholder="e.g. MBBS, MD"
                                     className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#1A3668] focus:border-transparent transition-all" />
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-semibold text-gray-700">Specialization</label>
-                                <input type="text" name="specialization" value={formData.specialization} onChange={handleChange} required
+                                <input type="text" name="specialization" value={formData.specialization} onChange={handleChange} required placeholder="e.g. Cardiologist"
                                     className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#1A3668] focus:border-transparent transition-all" />
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-semibold text-gray-700">Experience</label>
-                                <input type="text" name="experience" value={formData.experience} onChange={handleChange} required
+                                <input type="text" name="experience" value={formData.experience} onChange={handleChange} required placeholder="e.g. 10 Years"
                                     className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#1A3668] focus:border-transparent transition-all" />
                             </div>
                             <div className="space-y-1">
@@ -342,18 +279,78 @@ export default function DoctorProfile() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1">
                                 <label className="text-sm font-semibold text-gray-700">Clinic / Hospital</label>
-                                <input type="text" name="hospital" value={formData.hospital} onChange={handleChange} required
+                                <input type="text" name="hospital" value={formData.hospital} onChange={handleChange} required placeholder="e.g. City General Hospital"
                                     className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#1A3668] focus:border-transparent transition-all" />
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-semibold text-gray-700">Location</label>
-                                <input type="text" name="location" value={formData.location} onChange={handleChange} required
+                                <input type="text" name="location" value={formData.location} onChange={handleChange} required placeholder="e.g. New York, NY"
                                     className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#1A3668] focus:border-transparent transition-all" />
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1 relative" ref={dropdownRef}>
                                 <label className="text-sm font-semibold text-gray-700">Contact Number</label>
-                                <input type="text" name="contact" value={formData.contact} onChange={handleChange} required
-                                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#1A3668] focus:border-transparent transition-all" />
+                                <div className="flex gap-2">
+                                    {/* Country Selector Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                                        className="flex items-center justify-between gap-1 px-3 py-2.5 rounded-lg border border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors shrink-0 min-w-[90px]"
+                                    >
+                                        <span className="text-lg">{selectedCountry.flag}</span>
+                                        <span className="font-medium text-gray-700">{selectedCountry.code}</span>
+                                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                                    </button>
+
+                                    {/* Phone Number Input */}
+                                    <input
+                                        type="tel"
+                                        value={phoneNumber}
+                                        onChange={handlePhoneChange}
+                                        required
+                                        maxLength="15"
+                                        placeholder="e.g. 9876543210"
+                                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#1A3668] focus:border-transparent transition-all"
+                                    />
+                                </div>
+
+                                {/* Custom Dropdown */}
+                                {showCountryDropdown && (
+                                    <div className="absolute top-[76px] left-0 w-[280px] bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                                        <div className="p-2 border-b border-gray-100 bg-gray-50/50">
+                                            <div className="relative">
+                                                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search country or code..."
+                                                    value={countrySearch}
+                                                    onChange={(e) => setCountrySearch(e.target.value)}
+                                                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A3668]"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="max-h-48 overflow-y-auto">
+                                            {filteredCountries.length > 0 ? (
+                                                filteredCountries.map(c => (
+                                                    <button
+                                                        key={c.code + c.name}
+                                                        type="button"
+                                                        onClick={() => selectCountry(c)}
+                                                        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-blue-50 transition-colors text-left"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-xl">{c.flag}</span>
+                                                            <span className="font-medium text-gray-700 text-sm">{c.name}</span>
+                                                        </div>
+                                                        <span className="text-gray-500 font-mono text-xs">{c.code}</span>
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="p-4 text-center text-sm text-gray-500">No countries found</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-semibold text-gray-700 flex justify-between">
@@ -402,12 +399,21 @@ export default function DoctorProfile() {
                             <div className="space-y-1 md:col-span-2">
                                 <label className="text-sm font-semibold text-gray-700">Available Time (Mon - Sat)</label>
                                 <div className="relative">
-                                    <input
-                                        type="text"
-                                        name="availableTime" value={formData.availableTime} onChange={handleChange} required
-                                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#1A3668] focus:border-transparent transition-all pr-10"
-                                    />
-                                    <Clock className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                                    <select
+                                        name="availableTime"
+                                        value={formData.availableTime}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#1A3668] focus:border-transparent transition-all appearance-none cursor-pointer bg-white"
+                                    >
+                                        <option value="" disabled>Select your shift timing</option>
+                                        <option value="9:00 AM - 5:00 PM (Morning Priority)">9:00 AM - 5:00 PM (Morning Priority)</option>
+                                        <option value="10:00 AM - 6:00 PM (Standard Shift)">10:00 AM - 6:00 PM (Standard Shift)</option>
+                                        <option value="12:00 PM - 8:00 PM (Afternoon Shift)">12:00 PM - 8:00 PM (Afternoon Shift)</option>
+                                        <option value="3:00 PM - 11:00 PM (Evening Shift)">3:00 PM - 11:00 PM (Evening Shift)</option>
+                                        <option value="Flexible / By Appointment Only">Flexible / By Appointment Only</option>
+                                    </select>
+                                    <Clock className="w-5 h-5 text-[#1A3668] absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none" />
                                 </div>
                             </div>
                             <div className="space-y-1 md:col-span-2">
