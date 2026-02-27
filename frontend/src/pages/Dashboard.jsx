@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import DOMPurify from 'dompurify';
+import { supabase } from '../utils/supabaseClient';
 import BedTicker from '../components/BedTicker';
 import EmergencyOverride from '../components/EmergencyOverride';
 import ZeroTrustGatekeeper from '../components/ZeroTrustGatekeeper';
@@ -11,13 +12,59 @@ export default function Dashboard() {
     const [showGatekeeper, setShowGatekeeper] = useState(false);
     const [activeRecordHash, setActiveRecordHash] = useState('');
     const [unlockedTier, setUnlockedTier] = useState('none'); // none, life_packet, vault
+    const [isLoading, setIsLoading] = useState(true);
+    const [patient, setPatient] = useState({
+        id: '',
+        name: '',
+        age: 0,
+        bloodGroup: '',
+        emergencyContact: '',
+        walletAddress: ''
+    });
 
-    const patient = {
-        id: 'P-2026-047',
-        name: 'Aarav Patil',
-        age: 42,
-        bloodGroup: 'O+',
-    };
+    useEffect(() => {
+        const fetchPatientData = async () => {
+            try {
+                // Assuming we get the currently logged in user session
+                const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+                if (sessionError || !sessionData?.session) {
+                    // Handle no session (e.g., redirect or mock for dev)
+                    // For now, we will just stop loading to show the UI
+                    setIsLoading(false);
+                    return;
+                }
+
+                const user = sessionData.session.user;
+
+                // Fetch from your 'patients' table (adjust table name if needed)
+                const { data, error } = await supabase
+                    .from('patients')
+                    .select('id, full_name, blood_group, emergency_contact, wallet_address, age')
+                    .eq('user_id', user.id) // Assuming 'user_id' links to auth.users
+                    .single();
+
+                if (error) throw error;
+
+                if (data) {
+                    setPatient({
+                        id: data.id || 'N/A',
+                        name: data.full_name || 'Unknown',
+                        age: data.age || 0,
+                        bloodGroup: data.blood_group || 'Unknown',
+                        emergencyContact: data.emergency_contact || '',
+                        walletAddress: data.wallet_address || ''
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching patient data:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchPatientData();
+    }, []);
 
     // Simulated Legacy Import Data Sanitization
     const sampleClinicalNotes = DOMPurify.sanitize("Patient presented with a 3-day history of acute shortness of breath and mild chest pain. Vital signs indicate elevated heart rate. ECG shows sinus tachycardia without ischemic changes. Patient denies recent travel or exposure to illness. Past medical history significant for mild asthma controlled on albuterol PRN. Plan: Order stat chest X-ray and D-dimer to rule out PE, continue close monitoring.");
@@ -30,6 +77,17 @@ export default function Dashboard() {
             alert(`Securely viewing ${tier} document...`);
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-[var(--color-dashboard-bg)] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-[var(--color-primary-cyan)] border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-gray-600 font-medium">Loading Patient Data...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[var(--color-dashboard-bg)] p-6 lg:p-12 font-sans">
@@ -80,6 +138,20 @@ export default function Dashboard() {
                                 <span className="text-gray-600">Age:</span>
                                 <span className="font-semibold text-gray-900">{patient.age} yrs</span>
                             </div>
+                            {patient.emergencyContact && (
+                                <div className="flex items-center gap-3 text-sm">
+                                    <Phone className="w-4 h-4 text-gray-400" />
+                                    <span className="text-gray-600">Emergency:</span>
+                                    <span className="font-semibold text-gray-900">{patient.emergencyContact}</span>
+                                </div>
+                            )}
+                            {patient.walletAddress && (
+                                <div className="flex items-center gap-3 text-sm mt-4 pt-4 border-t border-gray-100">
+                                    <span className="text-xs font-mono text-gray-500 truncate w-full" title={patient.walletAddress}>
+                                        Wallet: {patient.walletAddress.substring(0, 6)}...{patient.walletAddress.substring(patient.walletAddress.length - 4)}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
