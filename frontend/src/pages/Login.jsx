@@ -144,7 +144,7 @@ export default function Login() {
                     // OTP will be sent automatically
                     setFormMode('otp');
                 } catch (err) {
-                    console.error('signup error', err);
+                    console.error('Full Error Object (Complete Registration):', err);
                     setErrors({ ...errors, email: err.message });
                 }
             } else if (role === 'doctor') {
@@ -186,7 +186,7 @@ export default function Login() {
                 setGeneratedId(backendData.patientId);
                 setFormMode('success');
             } catch (err) {
-                console.error('verify-otp error', err);
+                console.error('Full Error Object (Verify OTP):', err);
                 setOtpError(err.message);
             }
         } else {
@@ -228,7 +228,7 @@ export default function Login() {
                     });
                 }
             } catch (err) {
-                console.error('Login error', err);
+                console.error('Full Error Object (Login):', err);
                 setErrors({ ...errors, password: err.message });
             }
         }
