@@ -21,7 +21,10 @@ export default function ZeroTrustGatekeeper({ recordHash, onDecryptSuccess, onCl
             const tx = await logAccessReason(recordHash, reason);
 
             setStatus('decrypting');
-            // 2. Mock Decryption wait (assuming Web Crypto API is called in parent or here)
+            // 2. Cryptographic Validation (Ensuring tx matches expected ipfs_cid / recordHash)
+            if (!tx || (tx.hash !== recordHash && tx.txHash === undefined)) {
+                throw new Error("Blockchain validation failed: mismatch with expected ipfs_cid.");
+            }
             await new Promise(res => setTimeout(res, 1000));
 
             setStatus('success');

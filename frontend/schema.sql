@@ -20,8 +20,8 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 CREATE TABLE IF NOT EXISTS public.medical_records (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     patient_id TEXT REFERENCES public.profiles(upid) ON DELETE CASCADE,
-    ipfs_cid TEXT NOT NULL,
-    record_hash TEXT NOT NULL,
+    ipfs_cid TEXT NOT NULL UNIQUE,
+    record_hash TEXT NOT NULL UNIQUE,
     data_tier TEXT NOT NULL CHECK (data_tier IN ('vault', 'life_packet')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );

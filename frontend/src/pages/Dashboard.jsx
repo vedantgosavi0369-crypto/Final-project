@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import DOMPurify from 'dompurify';
 import BedTicker from '../components/BedTicker';
 import EmergencyOverride from '../components/EmergencyOverride';
 import ZeroTrustGatekeeper from '../components/ZeroTrustGatekeeper';
@@ -18,7 +19,8 @@ export default function Dashboard() {
         bloodGroup: 'O+',
     };
 
-    const sampleClinicalNotes = "Patient presented with a 3-day history of acute shortness of breath and mild chest pain. Vital signs indicate elevated heart rate. ECG shows sinus tachycardia without ischemic changes. Patient denies recent travel or exposure to illness. Past medical history significant for mild asthma controlled on albuterol PRN. Plan: Order stat chest X-ray and D-dimer to rule out PE, continue close monitoring.";
+    // Simulated Legacy Import Data Sanitization
+    const sampleClinicalNotes = DOMPurify.sanitize("Patient presented with a 3-day history of acute shortness of breath and mild chest pain. Vital signs indicate elevated heart rate. ECG shows sinus tachycardia without ischemic changes. Patient denies recent travel or exposure to illness. Past medical history significant for mild asthma controlled on albuterol PRN. Plan: Order stat chest X-ray and D-dimer to rule out PE, continue close monitoring.");
 
     const handleDocumentClick = (hash, tier) => {
         if (tier === 'vault' && unlockedTier !== 'vault') {
