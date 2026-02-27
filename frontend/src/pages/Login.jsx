@@ -10,11 +10,45 @@ export default function Login() {
     const [formMode, setFormMode] = useState('initial'); // 'initial', 'login', 'register', 'otp', 'success'
 
     // Form inputs state
+    const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [otp, setOtp] = useState('');
-    const [errors, setErrors] = useState({ email: '', password: '', confirm: '' });
+    const [errors, setErrors] = useState({ fullName: '', email: '', password: '', confirm: '' });
+
+    // Validate Name (only alphabets and spaces allowed)
+    const validateNameInput = (value) => {
+        return /^[a-zA-Z\s]*$/.test(value);
+    };
+
+    const handleNameChange = (e) => {
+        const newValue = e.target.value;
+        if (validateNameInput(newValue)) {
+            setFullName(newValue);
+            if (errors.fullName) setErrors({ ...errors, fullName: '' });
+        }
+    };
+
+    // Global helper for Real-time Password Strength calculation
+    const getPasswordStrength = (pwd) => {
+        if (!pwd) return { label: '', color: 'bg-transparent', width: '0%', textColor: '' };
+        
+        const hasMinLength = pwd.length >= 8;
+        const hasUpper = /[A-Z]/.test(pwd);
+        const hasLower = /[a-z]/.test(pwd);
+        const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
+
+        if (hasMinLength && hasUpper && hasLower && hasSpecial) {
+            return { label: 'Strong', color: 'bg-[#39FF14]', width: '100%', textColor: 'text-[#39FF14]' };
+        } else if (hasMinLength) {
+            return { label: 'Medium', color: 'bg-yellow-400', width: '66%', textColor: 'text-yellow-500' };
+        } else {
+            return { label: 'Weak', color: 'bg-red-500', width: '33%', textColor: 'text-red-500' };
+        }
+    };
+
+    const strength = getPasswordStrength(password);
 
     const generatePatientId = () => {
         const year = new Date().getFullYear();
@@ -26,7 +60,12 @@ export default function Login() {
 
     const validateForm = () => {
         let isValid = true;
-        const newErrors = { email: '', password: '', confirm: '' };
+        const newErrors = { fullName: '', email: '', password: '', confirm: '' };
+
+        if (formMode === 'register' && !fullName.trim()) {
+            newErrors.fullName = 'Name is required';
+            isValid = false;
+        }
 
         // Email validation (user@domain.com)
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -45,11 +84,13 @@ export default function Login() {
         } else {
             const hasNumber = /\d/.test(password);
             const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            const hasUpper = /[A-Z]/.test(password);
+            const hasLower = /[a-z]/.test(password);
             if (password.length < 8) {
                 newErrors.password = 'Must be at least 8 characters';
                 isValid = false;
-            } else if (!hasNumber || !hasSpecial) {
-                newErrors.password = 'Must contain a number and special character';
+            } else if (!hasNumber || !hasSpecial || !hasUpper || !hasLower) {
+                newErrors.password = 'Must contain a number, an uppercase letter, a lowercase letter and a special character';
                 isValid = false;
             }
         }
@@ -71,6 +112,17 @@ export default function Login() {
 
     const handleRegisterSubmit = (e) => {
         e.preventDefault();
+        if (!fullName.trim() || !validateNameInput(fullName)) {
+            setErrors({ ...errors, fullName: "Please enter a valid name (letters and spaces only)." });
+            return;
+        }
+        
+        const currentStrength = getPasswordStrength(password);
+        if (currentStrength.label !== 'Strong') {
+            setErrors({ ...errors, password: "Password must be at least 8 characters, with 1 uppercase, 1 lowercase, and 1 special character." });
+            return;
+        }
+
         if (validateForm()) {
             if (role === 'patient') {
                 setFormMode('otp');
@@ -78,6 +130,7 @@ export default function Login() {
                 alert("Registered as applicant. Pending Admin verification.");
                 setFormMode('initial');
                 setEmail('');
+                setFullName('');
                 setPassword('');
                 setConfirmPassword('');
             }
@@ -107,9 +160,10 @@ export default function Login() {
 
     const handleBack = () => {
         setFormMode('initial');
-        setErrors({ email: '', password: '', confirm: '' });
+        setErrors({ fullName: '', email: '', password: '', confirm: '' });
         setPassword('');
         setConfirmPassword('');
+        setFullName('');
     };
 
     const logoVariants = {
@@ -249,8 +303,49 @@ export default function Login() {
                             </p>
 
                             <form onSubmit={formMode === 'login' ? handleLogin : handleRegisterSubmit} className="space-y-4">
+                                {formMode === 'register' && (
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-semibold text-[#1A3668]/80">Full Name</label>
+                                        <input
+                                            type="text"
+                                            value={fullName}
+                                            onChange={handleNameChange}
+                                            placeholder="John Doe"
+                                            className={`w-full px-4 py-2.5 rounded-lg border bg-white/50 backdrop-blur-sm focus:ring-2 focus:outline-none transition-all ${errors.fullName ? 'border-red-400 focus:border-red-400 focus:ring-red-200' : 'border-[#1A3668]/20 focus:border-[#1A3668] focus:ring-[#1A3668]/20'}`}
+                                        />
+                                        {errors.fullName && <p className="text-xs text-red-500 font-medium">{errors.fullName}</p>}
+                                    </div>
+                                )}
                                 {renderInput('email', email, setEmail, 'name@example.com', errors.email, 'Email Address')}
-                                {renderInput('password', password, setPassword, '••••••••', errors.password, 'Password')}
+
+                                <div className="space-y-1 w-full">
+                                    <label className="text-sm font-semibold text-[#1A3668]/80">Password</label>
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => {
+                                            setPassword(e.target.value);
+                                            if (errors.password) setErrors({ ...errors, password: '' });
+                                        }}
+                                        placeholder="••••••••"
+                                        className={`w-full px-4 py-2.5 rounded-lg border bg-white/50 backdrop-blur-sm focus:ring-2 focus:outline-none transition-all ${errors.password ? 'border-red-400 focus:border-red-400 focus:ring-red-200' : 'border-[#1A3668]/20 focus:border-[#1A3668] focus:ring-[#1A3668]/20'}`}
+                                    />
+                                    {errors.password && <p className="text-xs text-red-500 font-medium">{errors.password}</p>}
+                                    
+                                    {formMode === 'register' && password && (
+                                        <div className="mt-2 w-full">
+                                            <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                                                <div 
+                                                    className={`h-full transition-all duration-300 ${strength.color}`} 
+                                                    style={{ width: strength.width }}
+                                                ></div>
+                                            </div>
+                                            <p className={`text-[10px] mt-1 font-semibold uppercase tracking-wider ${strength.textColor}`}>
+                                                {strength.label}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
 
                                 {formMode === 'register' &&
                                     renderInput('password', confirmPassword, setConfirmPassword, '••••••••', errors.confirm, 'Confirm Password')
@@ -319,6 +414,7 @@ export default function Login() {
                                 onClick={() => {
                                     setFormMode('login');
                                     setEmail('');
+                                    setFullName('');
                                     setPassword('');
                                     setConfirmPassword('');
                                     setOtp('');
