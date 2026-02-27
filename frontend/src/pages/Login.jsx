@@ -7,12 +7,13 @@ export default function Login() {
     const navigate = useNavigate();
     const [role, setRole] = useState('patient'); // patient, doctor, applicant, admin
     const [generatedId, setGeneratedId] = useState('');
-    const [formMode, setFormMode] = useState('initial'); // 'initial', 'login', 'register', 'success'
+    const [formMode, setFormMode] = useState('initial'); // 'initial', 'login', 'register', 'otp', 'success'
 
     // Form inputs state
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [otp, setOtp] = useState('');
     const [errors, setErrors] = useState({ email: '', password: '', confirm: '' });
 
     const generatePatientId = () => {
@@ -72,7 +73,7 @@ export default function Login() {
         e.preventDefault();
         if (validateForm()) {
             if (role === 'patient') {
-                generatePatientId();
+                setFormMode('otp');
             } else if (role === 'doctor') {
                 alert("Registered as applicant. Pending Admin verification.");
                 setFormMode('initial');
@@ -80,6 +81,13 @@ export default function Login() {
                 setPassword('');
                 setConfirmPassword('');
             }
+        }
+    };
+
+    const handleVerifyOtp = (e) => {
+        e.preventDefault();
+        if (otp.length > 0) {
+            generatePatientId();
         }
     };
 
@@ -142,9 +150,9 @@ export default function Login() {
     return (
         <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white">
             {/* Health-Tech Background */}
-            <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_center,_#f0f4f8_0%,_#ffffff_100%)]" />
-            <div className="absolute inset-0 -z-10 opacity-[0.03]"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5V18H0v-2h20v-2h2v2h20v2H22v2.5h18v2H22v2h-2v-2H0v-2h20z' fill='%231A3668' fill-rule='evenodd'/%3E%3C/svg%3E")` }}
+            <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_center,_#e0f2fe_0%,_#ffffff_100%)]" />
+            <div className="absolute inset-0 -z-10 opacity-5"
+                style={{ backgroundImage: `linear-gradient(#93c5fd 1px, transparent 1px), linear-gradient(90deg, #93c5fd 1px, transparent 1px)`, backgroundSize: '40px 40px' }}
             />
 
             {/* Fixed Header */}
@@ -155,7 +163,7 @@ export default function Login() {
                 <img
                     src="/jeevanconnectlogo.png"
                     alt="JeevanConnect Logo"
-                    className="w-16 h-16 object-contain drop-shadow-sm"
+                    className="w-20 h-20 object-contain drop-shadow-sm"
                 />
                 <h1 className="text-2xl font-bold tracking-tight">
                     <span className="text-[#1A3668]">Jeevan</span>
@@ -259,6 +267,33 @@ export default function Login() {
                         </motion.div>
                     )}
 
+                    {formMode === 'otp' && (
+                        <motion.div
+                            key="otp"
+                            initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}
+                            className="w-full"
+                        >
+                            <button onClick={() => setFormMode('register')} className="flex items-center gap-1 text-sm font-medium text-[#1A3668] hover:text-[#2D7A4D] transition-colors mb-6 group">
+                                <ArrowLeft className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" /> Back
+                            </button>
+
+                            <h2 className="text-2xl font-bold text-[#1A3668] mb-1">Enter OTP</h2>
+                            <p className="text-sm text-gray-500 font-medium mb-6">We've sent a verification code to your email.</p>
+
+                            <form onSubmit={handleVerifyOtp} className="space-y-4">
+                                {renderInput('text', otp, setOtp, 'Enter OTP', '', 'OTP Code')}
+
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
+                                    type="submit"
+                                    className="w-full py-2.5 mt-2 bg-[#1A3668] text-white font-bold rounded-lg shadow-md hover:bg-[#12264a] hover:shadow-lg transition-all border border-[#1A3668]/50 focus:ring-2 focus:ring-[#2D7A4D] focus:ring-offset-2 focus:outline-none bg-gradient-to-b from-[#1A3668] to-[#12264a]"
+                                >
+                                    Verify OTP
+                                </motion.button>
+                            </form>
+                        </motion.div>
+                    )}
+
                     {formMode === 'success' && (
                         <motion.div
                             key="success"
@@ -281,10 +316,16 @@ export default function Login() {
 
                             <motion.button
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => navigate('/dashboard')}
+                                onClick={() => {
+                                    setFormMode('login');
+                                    setEmail('');
+                                    setPassword('');
+                                    setConfirmPassword('');
+                                    setOtp('');
+                                }}
                                 className="w-full py-2.5 bg-[#2D7A4D] text-white font-bold rounded-lg shadow-md hover:bg-[#1e5a37] hover:shadow-lg transition-all border border-[#2D7A4D]/50 focus:ring-2 focus:ring-[#1A3668] focus:outline-none"
                             >
-                                Proceed to Dashboard
+                                Go to Patient Login
                             </motion.button>
                         </motion.div>
                     )}
