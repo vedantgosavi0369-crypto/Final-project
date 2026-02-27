@@ -32,3 +32,19 @@ ALTER TABLE public.medical_records ENABLE ROW LEVEL SECURITY;
 -- 3. Additional Indexes
 CREATE INDEX IF NOT EXISTS idx_medical_records_patient_id ON public.medical_records(patient_id);
 CREATE INDEX IF NOT EXISTS idx_medical_records_data_tier ON public.medical_records(data_tier);
+
+-- 4. Audit Log for Scan-to-Treat Access
+CREATE TABLE IF NOT EXISTS public.access_logs (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    doctor_id TEXT REFERENCES public.profiles(upid),
+    doctor_email TEXT,
+    patient_id TEXT REFERENCES public.profiles(upid),
+    purpose TEXT,
+    token TEXT,
+    expires_at TIMESTAMPTZ,
+    duration_seconds INT,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_access_logs_doctor_id ON public.access_logs(doctor_id);
+CREATE INDEX IF NOT EXISTS idx_access_logs_patient_id ON public.access_logs(patient_id);

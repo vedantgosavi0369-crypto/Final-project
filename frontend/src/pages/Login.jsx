@@ -172,11 +172,14 @@ export default function Login() {
                     setFormMode('otp');
                 } catch (err) {
                     console.error('Full Error Object (Complete Registration):', err);
-                    if (err.message === 'Failed to fetch' || err.message.includes('fetch')) {
-                        console.warn('Backend unreachable. Proceeding with mock UI flow for frontend testing.');
+                    // Handle network errors gracefully
+                    if (err.message === 'Failed to fetch' || err.message.includes('fetch') || err.message.includes('NetworkError')) {
+                        console.warn('⚠️ Network connectivity issue detected. Proceeding with OTP for testing.');
                         setFormMode('otp');
+                    } else if (err.message.includes('already registered') || err.status === 422) {
+                        setErrors({ ...errors, email: 'This email is already registered. Please login instead.' });
                     } else {
-                        setErrors({ ...errors, email: err.message });
+                        setErrors({ ...errors, email: err.message || 'Registration failed. Please try again.' });
                     }
                 }
             } else if (role === 'doctor') {
@@ -415,6 +418,24 @@ export default function Login() {
                                 >
                                     Login as {role.charAt(0).toUpperCase() + role.slice(1)}
                                 </motion.button>
+
+                                {/* bypass buttons for development/testing */}
+                                <div className="mt-4 space-y-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate('/dashboard')}
+                                        className="w-full py-2 text-sm font-medium text-[#1A3668] hover:text-[#2D7A4D] transition-colors border border-[#1A3668]/20 rounded-lg hover:bg-blue-50"
+                                    >
+                                        View Patient Dashboard
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate('/dashboard')}
+                                        className="w-full py-2 text-sm font-medium text-[#1A3668] hover:text-[#2D7A4D] transition-colors border border-[#1A3668]/20 rounded-lg hover:bg-blue-50"
+                                    >
+                                        View Doctor Dashboard
+                                    </button>
+                                </div>
                             </form>
                         </motion.div>
                     )}

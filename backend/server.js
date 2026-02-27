@@ -20,6 +20,9 @@ const supabase = createClient(
 // in-memory store for OTP codes (email -> { code, expires })
 const otpStore = {};
 
+// in-memory access log for Scan-to-Treat (will also attempt DB insert)
+const accessLogs = [];
+
 // transporter configuration using environment variables
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -66,6 +69,47 @@ app.post('/api/send-otp', async (req, res) => {
         // show code anyway so devs can complete flow without SMTP
         console.log(`Fallback OTP for ${email}: ${code}`);
         res.status(500).json({ error: 'Failed to send OTP' });
+    }
+});
+
+// new endpoint for Scan-to-Treat protocol
+app.post('/api/scan-access', async (req, res) => {
+    const { doctorEmail, patientId, password } = req.body;
+    if (!doctorEmail || !patientId || !password) {
+        return res.status(400).json({ error: 'doctorEmail, patientId and password are required' });
+    }
+
+    try {
+        // step-up authentication: re-verify doctor credentials
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: doctorEmail,
+            password
+        });
+        if (error) throw error;
+        const doctorId = data?.user?.id;
+        const token = Math.random().toString(36).substr(2, 8);
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        const entry = {
+            doctor_id: doctorId,
+            doctor_email: doctorEmail,
+            patient_id: patientId,
+            purpose: 'consultation',
+            token,
+            expires_at: expiresAt,
+            duration_seconds: 15 * 60,
+            created_at: new Date().toISOString()
+        };
+        accessLogs.push(entry);
+        // attempt to persist in Supabase table if exists
+        supabase.from('access_logs').insert([entry]).catch(() => { /* ignore if table missing */ });
+
+        // notify patient (console placeholder)
+        console.log(`Notification: patient ${patientId} accessed by ${doctorEmail} until ${expiresAt}`);
+
+        return res.json({ token, expiresAt, purpose: 'consultation' });
+    } catch (err) {
+        console.error('scan-access error', err);
+        return res.status(401).json({ error: err?.message || 'authentication failed' });
     }
 });
 
@@ -116,7 +160,7 @@ app.post('/api/complete-registration', async (req, res) => {
             .select('patient_id')
             .eq('id', userId)
             .single();
-            
+
         if (existing) {
             return res.json({ message: 'Patient already registered', patientId: existing.patient_id });
         }

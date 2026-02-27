@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import DOMPurify from 'dompurify';
 import { supabase } from '../utils/supabaseClient';
 import BedTicker from '../components/BedTicker';
+import QRCodeGenerator from '../components/QRCodeGenerator';
+import QRScanner from '../components/QRScanner';
 import EmergencyOverride from '../components/EmergencyOverride';
 import ZeroTrustGatekeeper from '../components/ZeroTrustGatekeeper';
 import ClinicalSummarizer from '../components/ClinicalSummarizer';
@@ -11,6 +13,8 @@ import { User, Activity, FileText, Phone } from 'lucide-react';
 export default function Dashboard() {
     const [showGatekeeper, setShowGatekeeper] = useState(false);
     const [activeRecordHash, setActiveRecordHash] = useState('');
+    const [scanning, setScanning] = useState(false);
+    const [scanError, setScanError] = useState('');
     const [unlockedTier, setUnlockedTier] = useState('none'); // none, life_packet, vault
     const [isLoading, setIsLoading] = useState(true);
     const [patient, setPatient] = useState({
@@ -78,12 +82,70 @@ export default function Dashboard() {
         }
     };
 
+    const handleScanToTreat = async () => {
+        setScanError('');
+        setScanning(true);
+    };
+
+    const onDecode = async (decodedText) => {
+        setScanning(false);
+        try {
+            const patientIdInput = decodedText;
+            const password = prompt('Re-enter your password to verify (step-up auth):');
+            if (!password) return;
+            const { data: sessionData } = await supabase.auth.getSession();
+            const doctorEmail = sessionData?.session?.user?.email;
+            const res = await fetch('/api/scan-access', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ doctorEmail, patientId: patientIdInput, password })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'failed');
+            alert(`Access granted. Token: ${data.token}\nExpires at: ${data.expiresAt}`);
+        } catch (err) {
+            console.error('Scan-to-Treat failure', err);
+            setScanError(err.message);
+            alert('Scan-to-Treat failed: ' + err.message);
+        }
+    };
+
+    const onScanError = (err) => {
+        console.warn('QR scan error', err);
+        setScanError('Camera error: ' + err);
+        setScanning(false);
+    };
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-[var(--color-dashboard-bg)] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-[var(--color-primary-cyan)] border-t-transparent rounded-full animate-spin"></div>
                     <p className="text-gray-600 font-medium">Loading Patient Data...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // when camera scanning is active, show scanner overlay
+    if (scanning) {
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-4 shadow-lg max-w-md w-full">
+                    <h2 className="text-lg font-bold mb-2">Scan QR Code</h2>
+                    <QRScanner onDecode={onDecode} onError={onScanError} />
+                    {scanError && (
+                        <p className="text-red-500 text-sm mt-2">{scanError}</p>
+                    )}
+                    <button
+                        onClick={() => {
+                            setScanning(false);
+                            setScanError('');
+                        }}
+                        className="mt-4 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                    >
+                        Cancel
+                    </button>
                 </div>
             </div>
         );
@@ -104,6 +166,10 @@ export default function Dashboard() {
                         patientId={patient.id}
                         onOverrideSuccess={() => setUnlockedTier('life_packet')}
                     />
+                    <button
+                        onClick={handleScanToTreat}
+                        className="py-2 px-4 bg-[#2D7A4D] text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
+                    >Scan-to-Treat</button>
                 </div>
             </header>
 
@@ -126,6 +192,13 @@ export default function Dashboard() {
                                 <span className="text-xs font-bold text-[var(--color-primary-cyan)] bg-blue-50 px-2 py-1 rounded-full">{patient.id}</span>
                             </div>
                         </div>
+                        {/* QR code for patient ID - share with doctor */}
+                        {patient.id && (
+                            <div className="mt-4 text-center">
+                                <p className="text-xs text-gray-500 mb-2">Share this QR with your doctor</p>
+                                <QRCodeGenerator value={patient.id} size={160} />
+                            </div>
+                        )}
 
                         <div className="space-y-4">
                             <div className="flex items-center gap-3 text-sm">
