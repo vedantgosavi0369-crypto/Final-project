@@ -15,6 +15,7 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [otp, setOtp] = useState('');
+    const [otpError, setOtpError] = useState('');
     const [errors, setErrors] = useState({ fullName: '', email: '', password: '', confirm: '' });
 
     // Validate Name (only alphabets and spaces allowed)
@@ -33,7 +34,7 @@ export default function Login() {
     // Global helper for Real-time Password Strength calculation
     const getPasswordStrength = (pwd) => {
         if (!pwd) return { label: '', color: 'bg-transparent', width: '0%', textColor: '' };
-        
+
         const hasMinLength = pwd.length >= 8;
         const hasUpper = /[A-Z]/.test(pwd);
         const hasLower = /[a-z]/.test(pwd);
@@ -116,7 +117,7 @@ export default function Login() {
             setErrors({ ...errors, fullName: "Please enter a valid name (letters and spaces only)." });
             return;
         }
-        
+
         const currentStrength = getPasswordStrength(password);
         if (currentStrength.label !== 'Strong') {
             setErrors({ ...errors, password: "Password must be at least 8 characters, with 1 uppercase, 1 lowercase, and 1 special character." });
@@ -125,7 +126,21 @@ export default function Login() {
 
         if (validateForm()) {
             if (role === 'patient') {
-                setFormMode('otp');
+                // ask backend to send OTP before showing otp page
+                fetch('/api/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                })
+                    .then(async res => {
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
+                        setFormMode('otp');
+                    })
+                    .catch(err => {
+                        console.error('send-otp error', err);
+                        setErrors({ ...errors, email: err.message });
+                    });
             } else if (role === 'doctor') {
                 alert("Registered as applicant. Pending Admin verification.");
                 setFormMode('initial');
@@ -139,8 +154,24 @@ export default function Login() {
 
     const handleVerifyOtp = (e) => {
         e.preventDefault();
+        setOtpError('');
         if (otp.length > 0) {
-            generatePatientId();
+            fetch('/api/verify-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, otp })
+            })
+                .then(async res => {
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'OTP verification failed');
+                    generatePatientId();
+                })
+                .catch(err => {
+                    console.error('verify-otp error', err);
+                    setOtpError(err.message);
+                });
+        } else {
+            setOtpError('Please enter the code');
         }
     };
 
@@ -164,6 +195,8 @@ export default function Login() {
         setPassword('');
         setConfirmPassword('');
         setFullName('');
+        setOtp('');
+        setOtpError('');
     };
 
     const logoVariants = {
@@ -331,12 +364,12 @@ export default function Login() {
                                         className={`w-full px-4 py-2.5 rounded-lg border bg-white/50 backdrop-blur-sm focus:ring-2 focus:outline-none transition-all ${errors.password ? 'border-red-400 focus:border-red-400 focus:ring-red-200' : 'border-[#1A3668]/20 focus:border-[#1A3668] focus:ring-[#1A3668]/20'}`}
                                     />
                                     {errors.password && <p className="text-xs text-red-500 font-medium">{errors.password}</p>}
-                                    
+
                                     {formMode === 'register' && password && (
                                         <div className="mt-2 w-full">
                                             <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                                                <div 
-                                                    className={`h-full transition-all duration-300 ${strength.color}`} 
+                                                <div
+                                                    className={`h-full transition-all duration-300 ${strength.color}`}
                                                     style={{ width: strength.width }}
                                                 ></div>
                                             </div>
@@ -373,10 +406,10 @@ export default function Login() {
                             </button>
 
                             <h2 className="text-2xl font-bold text-[#1A3668] mb-1">Enter OTP</h2>
-                            <p className="text-sm text-gray-500 font-medium mb-6">We've sent a verification code to your email.</p>
+                            <p className="text-sm text-gray-500 font-medium mb-6">We've sent a verification code to your email. Check your inbox or spam folder.</p>
 
                             <form onSubmit={handleVerifyOtp} className="space-y-4">
-                                {renderInput('text', otp, setOtp, 'Enter OTP', '', 'OTP Code')}
+                                {renderInput('text', otp, setOtp, 'Enter OTP', otpError, 'OTP Code')}
 
                                 <motion.button
                                     whileTap={{ scale: 0.95 }}

@@ -3,6 +3,7 @@ const express = require("express")
 const cors = require("cors")
 const dotenv = require("dotenv")
 const path = require("path")
+const nodemailer = require("nodemailer")
 const { createClient } = require("@supabase/supabase-js")
 
 dotenv.config()
@@ -16,13 +17,78 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
+// in-memory store for OTP codes (email -> { code, expires })
+const otpStore = {};
+
+// transporter configuration using environment variables
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || "587"),
+    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+    }
+});
+
 app.get("/api", (req, res) => {
     res.json({ message: "Backend running successfully" })
 })
 
+// send OTP to given email address
+app.post('/api/send-otp', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    // generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = Date.now() + 5 * 60 * 1000; // valid for 5 minutes
+    otpStore[email] = { code, expires };
+
+    // if SMTP is not configured, just log the code to the server console so developers can continue
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        console.warn('SMTP variables missing, printing OTP to console instead');
+        console.log(`OTP for ${email}: ${code}`);
+        return res.json({ message: 'OTP generated (check server logs)' });
+    }
+
+    try {
+        await transporter.sendMail({
+            from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+            to: email,
+            subject: 'Your verification code',
+            text: `Your OTP code is ${code}. It will expire in 5 minutes.`,
+            html: `<p>Your OTP code is <strong>${code}</strong>. It will expire in 5 minutes.</p>`
+        });
+        res.json({ message: 'OTP sent' });
+    } catch (err) {
+        console.error('Error sending OTP', err);
+        // show code anyway so devs can complete flow without SMTP
+        console.log(`Fallback OTP for ${email}: ${code}`);
+        res.status(500).json({ error: 'Failed to send OTP' });
+    }
+});
+
+// verify OTP
+app.post('/api/verify-otp', (req, res) => {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ error: 'Email and otp required' });
+
+    const record = otpStore[email];
+    if (!record || record.code !== otp || record.expires < Date.now()) {
+        return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
+
+    // remove after successful verification
+    delete otpStore[email];
+    res.json({ message: 'Verified' });
+});
+
 app.use(express.static(path.join(__dirname, "../frontend/dist")))
 
-app.get("*", (req, res) => {
+// catch-all for client-side routing (React/Vite)
+// use a regular expression route so path-to-regexp doesn't need a parameter name
+app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, "../frontend/dist", "index.html"))
 })
 
