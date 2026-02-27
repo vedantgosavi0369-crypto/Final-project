@@ -104,34 +104,36 @@ app.post('/api/verify-otp', async (req, res) => {
     }
 });
 
-// register new patient (after OTP verification)
-app.post('/api/register-patient', async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+// complete registration after Supabase OTP verification
+app.post('/api/complete-registration', async (req, res) => {
+    const { userId, email, fullName } = req.body;
+    if (!userId || !email) return res.status(400).json({ error: 'Missing required user details' });
 
     try {
-        // create auth user in supabase
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-            email,
-            password,
-            email_confirm: true
-        });
-
-        if (authError) throw authError;
+        // check if already exists
+        const { data: existing } = await supabase
+            .from('patients')
+            .select('patient_id')
+            .eq('id', userId)
+            .single();
+            
+        if (existing) {
+            return res.json({ message: 'Patient already registered', patientId: existing.patient_id });
+        }
 
         // generate patient ID
         const year = new Date().getFullYear();
         const randomNum = Math.floor(Math.random() * 900) + 100;
         const patientId = `P-${year}-${randomNum}`;
 
-        // create patient record in database
+        // create patient record in database using service role key
         const { data: patientData, error: patientError } = await supabase
             .from('patients')
             .insert([{
-                id: authData.user.id,
+                id: userId,
                 email,
                 patient_id: patientId,
-                full_name: '',
+                full_name: fullName || '',
                 created_at: new Date()
             }])
             .select('patient_id')
@@ -142,7 +144,7 @@ app.post('/api/register-patient', async (req, res) => {
         res.json({ message: 'Patient registered', patientId: patientData.patient_id });
     } catch (err) {
         console.error('Patient registration error:', err);
-        res.status(500).json({ error: err.message || 'Failed to register patient' });
+        res.status(500).json({ error: err.message || 'Failed to complete registration' });
     }
 });
 

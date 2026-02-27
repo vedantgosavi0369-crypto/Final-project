@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { supabase } from '../utils/supabaseClient';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -111,7 +112,7 @@ export default function Login() {
         setFormMode('register');
     };
 
-    const handleRegisterSubmit = (e) => {
+    const handleRegisterSubmit = async (e) => {
         e.preventDefault();
         if (!fullName.trim() || !validateNameInput(fullName)) {
             setErrors({ ...errors, fullName: "Please enter a valid name (letters and spaces only)." });
@@ -126,21 +127,26 @@ export default function Login() {
 
         if (validateForm()) {
             if (role === 'patient') {
-                // ask backend to send OTP before showing otp page
-                fetch('/api/send-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
-                })
-                    .then(async res => {
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
-                        setFormMode('otp');
-                    })
-                    .catch(err => {
-                        console.error('send-otp error', err);
-                        setErrors({ ...errors, email: err.message });
+                try {
+                    // Register with Supabase and send OTP
+                    const { data, error } = await supabase.auth.signUp({
+                        email,
+                        password,
+                        options: {
+                            data: {
+                                full_name: fullName
+                            }
+                        }
                     });
+
+                    if (error) throw error;
+
+                    // OTP will be sent automatically
+                    setFormMode('otp');
+                } catch (err) {
+                    console.error('signup error', err);
+                    setErrors({ ...errors, email: err.message });
+                }
             } else if (role === 'doctor') {
                 alert("Registered as applicant. Pending Admin verification.");
                 setFormMode('initial');
@@ -152,30 +158,37 @@ export default function Login() {
         }
     };
 
-    const handleVerifyOtp = (e) => {
+    const handleVerifyOtp = async (e) => {
         e.preventDefault();
         setOtpError('');
         if (otp.length > 0) {
-            fetch('/api/verify-otp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, otp })
-            })
-                .then(async res => {
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || 'OTP verification failed');
-
-                    // redirect based on whether patient is new or existing
-                    if (data.isNewPatient) {
-                        navigate('/password-creation', { state: { email } });
-                    } else {
-                        navigate('/dashboard', { state: { email, isReturningPatient: true } });
-                    }
-                })
-                .catch(err => {
-                    console.error('verify-otp error', err);
-                    setOtpError(err.message);
+            try {
+                // Verify OTP using Supabase
+                const { data, error } = await supabase.auth.verifyOtp({
+                    email,
+                    token: otp,
+                    type: 'signup'
                 });
+
+                if (error) throw error;
+                if (!data.session) throw new Error("Session not established. Please try again.");
+
+                // complete registration sequentially on the backend to secure the ID and record
+                const res = await fetch('/api/complete-registration', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: data.session.user.id, email, fullName })
+                });
+
+                const backendData = await res.json();
+                if (!res.ok) throw new Error(backendData.error || 'Failed to complete registration');
+
+                setGeneratedId(backendData.patientId);
+                setFormMode('success');
+            } catch (err) {
+                console.error('verify-otp error', err);
+                setOtpError(err.message);
+            }
         } else {
             setOtpError('Please enter the code');
         }
@@ -186,12 +199,38 @@ export default function Login() {
         setFormMode('login');
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         if (validateForm()) {
-            // In real app, verify via Supabase Auth
-            if (role === 'admin') navigate('/admin');
-            else navigate('/dashboard');
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) throw error;
+
+                if (role === 'admin') {
+                    navigate('/admin');
+                } else {
+                    const { data: patientData, error: patientError } = await supabase
+                        .from('patients')
+                        .select('patient_id')
+                        .eq('id', data.session.user.id)
+                        .single();
+
+                    navigate('/dashboard', {
+                        state: {
+                            email,
+                            isReturningPatient: true,
+                            patientId: patientData?.patient_id
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error('Login error', err);
+                setErrors({ ...errors, password: err.message });
+            }
         }
     };
 
