@@ -1,0 +1,295 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { User, ArrowLeft, CheckCircle2 } from 'lucide-react';
+
+export default function Login() {
+    const navigate = useNavigate();
+    const [role, setRole] = useState('patient'); // patient, doctor, applicant, admin
+    const [generatedId, setGeneratedId] = useState('');
+    const [formMode, setFormMode] = useState('initial'); // 'initial', 'login', 'register', 'success'
+
+    // Form inputs state
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [errors, setErrors] = useState({ email: '', password: '', confirm: '' });
+
+    const generatePatientId = () => {
+        const year = new Date().getFullYear();
+        const randomNum = Math.floor(Math.random() * 900) + 100;
+        const newId = `P-${year}-${randomNum}`;
+        setGeneratedId(newId);
+        setFormMode('success');
+    };
+
+    const validateForm = () => {
+        let isValid = true;
+        const newErrors = { email: '', password: '', confirm: '' };
+
+        // Email validation (user@domain.com)
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email.trim()) {
+            newErrors.email = 'Email is required';
+            isValid = false;
+        } else if (!emailRegex.test(email)) {
+            newErrors.email = 'Invalid email format';
+            isValid = false;
+        }
+
+        // Password validation (min 8 chars, 1 number, 1 special char)
+        if (!password) {
+            newErrors.password = 'Password is required';
+            isValid = false;
+        } else {
+            const hasNumber = /\d/.test(password);
+            const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            if (password.length < 8) {
+                newErrors.password = 'Must be at least 8 characters';
+                isValid = false;
+            } else if (!hasNumber || !hasSpecial) {
+                newErrors.password = 'Must contain a number and special character';
+                isValid = false;
+            }
+        }
+
+        // Confirm password validation
+        if (formMode === 'register' && password !== confirmPassword) {
+            newErrors.confirm = 'Passwords do not match';
+            isValid = false;
+        }
+
+        setErrors(newErrors);
+        return isValid;
+    };
+
+    const handleRegister = (e) => {
+        e.preventDefault();
+        setFormMode('register');
+    };
+
+    const handleRegisterSubmit = (e) => {
+        e.preventDefault();
+        if (validateForm()) {
+            if (role === 'patient') {
+                generatePatientId();
+            } else if (role === 'doctor') {
+                alert("Registered as applicant. Pending Admin verification.");
+                setFormMode('initial');
+                setEmail('');
+                setPassword('');
+                setConfirmPassword('');
+            }
+        }
+    };
+
+    const handleInitLogin = (e) => {
+        e.preventDefault();
+        setFormMode('login');
+    };
+
+    const handleLogin = (e) => {
+        e.preventDefault();
+        if (validateForm()) {
+            // In real app, verify via Supabase Auth
+            if (role === 'admin') navigate('/admin');
+            else navigate('/dashboard');
+        }
+    };
+
+    const handleBack = () => {
+        setFormMode('initial');
+        setErrors({ email: '', password: '', confirm: '' });
+        setPassword('');
+        setConfirmPassword('');
+    };
+
+    const logoVariants = {
+        hidden: { opacity: 0, x: -20 },
+        visible: { opacity: 1, x: 0, transition: { duration: 0.5 } }
+    };
+
+    const pageVariants = {
+        initial: { x: 50, opacity: 0 },
+        in: { x: 0, opacity: 1 },
+        out: { x: -50, opacity: 0 }
+    };
+
+    const pageTransition = {
+        type: "tween",
+        ease: "anticipate",
+        duration: 0.3
+    };
+
+    const renderInput = (type, value, setter, placeholder, error, label) => (
+        <div className="space-y-1">
+            <label className="text-sm font-semibold text-[#1A3668]/80">{label}</label>
+            <input
+                type={type}
+                value={value}
+                onChange={(e) => {
+                    setter(e.target.value);
+                    if (error) setErrors({ ...errors, [type === 'email' ? 'email' : (label === 'Confirm Password' ? 'confirm' : 'password')]: '' });
+                }}
+                placeholder={placeholder}
+                className={`w-full px-4 py-2.5 rounded-lg border bg-white/50 backdrop-blur-sm focus:ring-2 focus:outline-none transition-all ${error ? 'border-red-400 focus:border-red-400 focus:ring-red-200' : 'border-[#1A3668]/20 focus:border-[#1A3668] focus:ring-[#1A3668]/20'
+                    }`}
+            />
+            {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+        </div>
+    );
+
+    return (
+        <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white">
+            {/* Health-Tech Background */}
+            <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_center,_#f0f4f8_0%,_#ffffff_100%)]" />
+            <div className="absolute inset-0 -z-10 opacity-[0.03]"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5V18H0v-2h20v-2h2v2h20v2H22v2.5h18v2H22v2h-2v-2H0v-2h20z' fill='%231A3668' fill-rule='evenodd'/%3E%3C/svg%3E")` }}
+            />
+
+            {/* Fixed Header */}
+            <motion.div
+                initial="hidden" animate="visible" variants={logoVariants}
+                className="fixed top-0 left-0 p-8 flex items-center gap-4 z-50"
+            >
+                <img
+                    src="/jeevanconnectlogo.png"
+                    alt="JeevanConnect Logo"
+                    className="w-16 h-16 object-contain drop-shadow-sm"
+                />
+                <h1 className="text-2xl font-bold tracking-tight">
+                    <span className="text-[#1A3668]">Jeevan</span>
+                    <span className="text-[#2D7A4D]">Connect</span>
+                </h1>
+            </motion.div>
+
+            <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-2xl shadow-[0_12px_48px_rgba(26,54,104,0.2)] p-8 border border-[#1A3668]/20 overflow-hidden relative min-h-[460px] flex flex-col justify-center">
+                <AnimatePresence mode="wait">
+                    {formMode === 'initial' && (
+                        <motion.div
+                            key="initial"
+                            initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}
+                            className="w-full"
+                        >
+                            <h2 className="text-3xl font-bold text-center mb-2">
+                                <span className="text-[#1A3668]">Jeevan</span>
+                                <span className="text-[#2D7A4D]">Connect</span>
+                            </h2>
+                            <p className="text-center text-sm text-gray-500 font-medium mb-8">
+                                Zero-Trust Medical Blockchain
+                            </p>
+
+                            <div className="flex relative gap-2 mb-8 bg-black/5 p-1 rounded-lg backdrop-blur-sm border border-white/20">
+                                {['patient', 'doctor', 'admin'].map(r => (
+                                    <button
+                                        key={r}
+                                        onClick={() => setRole(r)}
+                                        className={`relative flex-1 py-1.5 text-sm font-semibold rounded-md capitalize transition-colors z-10 ${role === r ? 'text-white' : 'text-[#1A3668]/70 hover:text-[#1A3668]'}`}
+                                    >
+                                        {role === r && (
+                                            <motion.div
+                                                layoutId="pill"
+                                                className="absolute inset-0 bg-gradient-to-r from-[#1A3668] to-[#2D7A4D] rounded-md -z-10 shadow-sm"
+                                                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                                            />
+                                        )}
+                                        {r}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <form onSubmit={handleInitLogin} className="space-y-4">
+                                {role !== 'admin' && (
+                                    <button
+                                        type="button"
+                                        onClick={handleRegister}
+                                        className="w-full py-2 bg-cyan-50/80 text-[#1A3668] font-bold rounded-lg transition-all border border-[#2D7A4D]/30 hover:bg-cyan-100/80 hover:border-[#2D7A4D]/50 flex justify-center items-center gap-2 shadow-sm backdrop-blur-sm"
+                                    >
+                                        <User className="w-4 h-4" />
+                                        Register New {role === 'patient' ? 'Patient' : 'Applicant'}
+                                    </button>
+                                )}
+
+                                <div className="h-px bg-gradient-to-r from-transparent via-[#1A3668]/20 to-transparent my-6" />
+
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
+                                    type="submit"
+                                    className="w-full py-2.5 bg-[#1A3668] text-white font-bold rounded-lg shadow-md hover:bg-[#12264a] hover:shadow-lg transition-all border border-[#1A3668]/50 focus:ring-2 focus:ring-[#2D7A4D] focus:ring-offset-2 focus:outline-none bg-gradient-to-b from-[#1A3668] to-[#12264a]"
+                                >
+                                    Login as {role.charAt(0).toUpperCase() + role.slice(1)}
+                                </motion.button>
+                            </form>
+                        </motion.div>
+                    )}
+
+                    {(formMode === 'login' || formMode === 'register') && (
+                        <motion.div
+                            key="form"
+                            initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}
+                            className="w-full"
+                        >
+                            <button onClick={handleBack} className="flex items-center gap-1 text-sm font-medium text-[#1A3668] hover:text-[#2D7A4D] transition-colors mb-6 group">
+                                <ArrowLeft className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" /> Back
+                            </button>
+
+                            <h2 className="text-2xl font-bold text-[#1A3668] mb-1">
+                                {formMode === 'login' ? 'Welcome Back' : 'Create Account'}
+                            </h2>
+                            <p className="text-sm text-gray-500 font-medium mb-6">
+                                {formMode === 'login' ? `Sign in to your ${role} dashboard` : `Register as a new ${role}`}
+                            </p>
+
+                            <form onSubmit={formMode === 'login' ? handleLogin : handleRegisterSubmit} className="space-y-4">
+                                {renderInput('email', email, setEmail, 'name@example.com', errors.email, 'Email Address')}
+                                {renderInput('password', password, setPassword, '••••••••', errors.password, 'Password')}
+
+                                {formMode === 'register' &&
+                                    renderInput('password', confirmPassword, setConfirmPassword, '••••••••', errors.confirm, 'Confirm Password')
+                                }
+
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
+                                    type="submit"
+                                    className="w-full py-2.5 mt-2 bg-[#1A3668] text-white font-bold rounded-lg shadow-md hover:bg-[#12264a] hover:shadow-lg transition-all border border-[#1A3668]/50 focus:ring-2 focus:ring-[#2D7A4D] focus:ring-offset-2 focus:outline-none bg-gradient-to-b from-[#1A3668] to-[#12264a]"
+                                >
+                                    {formMode === 'login' ? 'Sign In' : 'Complete Registration'}
+                                </motion.button>
+                            </form>
+                        </motion.div>
+                    )}
+
+                    {formMode === 'success' && (
+                        <motion.div
+                            key="success"
+                            initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}
+                            className="w-full flex flex-col items-center text-center py-4"
+                        >
+                            <motion.div
+                                initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.2 }}
+                                className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 border-4 border-white shadow-sm"
+                            >
+                                <CheckCircle2 className="w-8 h-8 text-[#2D7A4D]" />
+                            </motion.div>
+                            <h2 className="text-2xl font-bold text-[#1A3668] mb-2">Registration Successful!</h2>
+                            <p className="text-sm text-gray-500 font-medium mb-6">Please save your unique Patient ID.</p>
+
+                            <div className="w-full p-4 bg-green-50/90 backdrop-blur-sm border border-green-200 rounded-xl mb-8 shadow-inner">
+                                <span className="block text-xs text-[#2D7A4D] font-bold mb-2 tracking-wide uppercase">Your Patient ID</span>
+                                <code className="text-2xl text-[#1A3668] font-mono font-bold">{generatedId}</code>
+                            </div>
+
+                            <motion.button
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => navigate('/dashboard')}
+                                className="w-full py-2.5 bg-[#2D7A4D] text-white font-bold rounded-lg shadow-md hover:bg-[#1e5a37] hover:shadow-lg transition-all border border-[#2D7A4D]/50 focus:ring-2 focus:ring-[#1A3668] focus:outline-none"
+                            >
+                                Proceed to Dashboard
+                            </motion.button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+        </div>
+    );
+}

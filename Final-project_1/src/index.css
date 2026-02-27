@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-cyan: #06b6d4;  /* Cyan Blue for primary actions */
+  --color-secondary-olive: #65a30d; /* Olive Green for secondary verification */
+  --color-accent-blue: #3b82f6;
+  --color-dashboard-bg: #f8fafc;
+  --color-text-dark: #0f172a;
+}
+
+body {
+  background-color: var(--color-dashboard-bg);
+  color: var(--color-text-dark);
+  font-family: 'Inter', system-ui, sans-serif;
+  margin: 0;
+  padding: 0;
+}
