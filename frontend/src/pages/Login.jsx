@@ -164,7 +164,13 @@ export default function Login() {
                 .then(async res => {
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || 'OTP verification failed');
-                    generatePatientId();
+
+                    // redirect based on whether patient is new or existing
+                    if (data.isNewPatient) {
+                        navigate('/password-creation', { state: { email } });
+                    } else {
+                        navigate('/dashboard', { state: { email, isReturningPatient: true } });
+                    }
                 })
                 .catch(err => {
                     console.error('verify-otp error', err);

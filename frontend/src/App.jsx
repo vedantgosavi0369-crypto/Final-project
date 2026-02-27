@@ -1,12 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AdminPortal from './pages/AdminPortal';
+import PasswordCreation from './pages/PasswordCreation';
 import CursorFollower from './components/CursorFollower';
 import HelpSidebar from './components/HelpSidebar';
+import SplashScreen from './components/SplashScreen';
 
 function App() {
+  const [isLaunching, setIsLaunching] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLaunching(false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLaunching) {
+    return <SplashScreen />;
+  }
+
   return (
     <Router>
       <CursorFollower />
@@ -16,6 +31,7 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin" element={<AdminPortal />} />
+          <Route path="/password-creation" element={<PasswordCreation />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

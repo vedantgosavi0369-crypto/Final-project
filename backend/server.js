@@ -69,8 +69,8 @@ app.post('/api/send-otp', async (req, res) => {
     }
 });
 
-// verify OTP
-app.post('/api/verify-otp', (req, res) => {
+// verify OTP and check if patient exists
+app.post('/api/verify-otp', async (req, res) => {
     const { email, otp } = req.body;
     if (!email || !otp) return res.status(400).json({ error: 'Email and otp required' });
 
@@ -81,7 +81,69 @@ app.post('/api/verify-otp', (req, res) => {
 
     // remove after successful verification
     delete otpStore[email];
-    res.json({ message: 'Verified' });
+
+    // check if patient already exists in supabase
+    try {
+        const { data, error } = await supabase
+            .from('patients')
+            .select('id, email')
+            .eq('email', email)
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            // PGRST116 = no rows returned (patient doesn't exist), which is fine
+            throw error;
+        }
+
+        const isNewPatient = !data || !data.id;
+        res.json({ message: 'Verified', isNewPatient, email });
+    } catch (err) {
+        // if supabase is not available, assume new patient (allow flow to continue)
+        console.warn('Could not check patient status:', err);
+        res.json({ message: 'Verified', isNewPatient: true, email });
+    }
+});
+
+// register new patient (after OTP verification)
+app.post('/api/register-patient', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+
+    try {
+        // create auth user in supabase
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true
+        });
+
+        if (authError) throw authError;
+
+        // generate patient ID
+        const year = new Date().getFullYear();
+        const randomNum = Math.floor(Math.random() * 900) + 100;
+        const patientId = `P-${year}-${randomNum}`;
+
+        // create patient record in database
+        const { data: patientData, error: patientError } = await supabase
+            .from('patients')
+            .insert([{
+                id: authData.user.id,
+                email,
+                patient_id: patientId,
+                full_name: '',
+                created_at: new Date()
+            }])
+            .select('patient_id')
+            .single();
+
+        if (patientError) throw patientError;
+
+        res.json({ message: 'Patient registered', patientId: patientData.patient_id });
+    } catch (err) {
+        console.error('Patient registration error:', err);
+        res.status(500).json({ error: err.message || 'Failed to register patient' });
+    }
 });
 
 app.use(express.static(path.join(__dirname, "../frontend/dist")))
