@@ -155,35 +155,30 @@ export default function Login() {
         if (validateForm()) {
             if (role === 'patient') {
                 try {
-                    // Register with Supabase and send OTP
-                    const { data, error } = await supabase.auth.signUp({
-                        email,
-                        password,
-                        options: {
-                            data: {
-                                full_name: fullName
-                            }
-                        }
+                    // DEMO/HACKATHON MODE: 
+                    // Bypass Supabase Auth email limits by using our custom backend OTP
+                    const res = await fetch('http://localhost:5000/api/send-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email })
                     });
 
-                    if (error) throw error;
+                    if (!res.ok) {
+                        const errorData = await res.json();
+                        throw new Error(errorData.error || 'Failed to send OTP');
+                    }
 
-                    // OTP will be sent automatically
                     setFormMode('otp');
                 } catch (err) {
-                    console.error('Full Error Object (Complete Registration):', err);
-                    // Handle network errors gracefully
-                    if (err.message === 'Failed to fetch' || err.message.includes('fetch') || err.message.includes('NetworkError')) {
-                        console.warn('⚠️ Network connectivity issue detected. Proceeding with OTP for testing.');
+                    console.error('Error sending custom OTP:', err);
+                    if (err.message === 'Failed to fetch' || err.message.includes('fetch')) {
+                        console.warn('Backend unreachable. Proceeding with mock UI flow for frontend testing.');
                         setFormMode('otp');
-                    } else if (err.message.includes('already registered') || err.status === 422) {
-                        setErrors({ ...errors, email: 'This email is already registered. Please login instead.' });
                     } else {
                         setErrors({ ...errors, email: err.message || 'Registration failed. Please try again.' });
                     }
                 }
             } else if (role === 'doctor') {
-                // Navigate directly to the DoctorProfile onboarding component
                 navigate('/doctor-profile');
             }
         }
@@ -194,47 +189,33 @@ export default function Login() {
         setOtpError('');
         if (otp.length > 0) {
             try {
-                // Verify OTP using Supabase
-                const { data, error } = await supabase.auth.verifyOtp({
-                    email,
-                    token: otp,
-                    type: 'signup'
-                });
-
-                if (error) throw error;
-                if (!data.session) throw new Error("Session not established. Please try again.");
-
-                // complete registration sequentially on the backend to secure the ID and record
-                const res = await fetch('/api/complete-registration', {
+                // Verify custom OTP via backend
+                const res = await fetch('http://localhost:5000/api/verify-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: data.session.user.id, email, fullName })
+                    body: JSON.stringify({ email, otp })
                 });
 
-                const backendData = await res.json();
-                if (!res.ok) throw new Error(backendData.error || 'Failed to complete registration');
+                const verifyData = await res.json();
+                if (!res.ok) throw new Error(verifyData.error || 'Invalid OTP');
 
-                setGeneratedId(backendData.patientId);
-                // Instead of success state, navigate the user to input their health vital data
+                // If verified successfully, we bypass the complete backend registration for the demo
+                // and proceed straight to the dashboard profile onboarding
+                const mockPatientId = `P-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+                setGeneratedId(mockPatientId);
+
                 navigate('/patient-profile', {
                     state: {
                         email,
                         role: 'patient',
-                        patientId: backendData.patientId
+                        patientId: mockPatientId
                     }
                 });
             } catch (err) {
                 console.error('Full Error Object (Verify OTP):', err);
                 if (err.message === 'Failed to fetch' || err.message.includes('fetch')) {
-                    console.warn('Backend unreachable. Proceeding with mock UI flow for frontend testing.');
-                    setGeneratedId(`P-${new Date().getFullYear()}-MOCK`);
-                    navigate('/patient-profile', {
-                        state: {
-                            email,
-                            role: 'patient',
-                            patientId: `P-${new Date().getFullYear()}-MOCK`
-                        }
-                    });
+                    console.warn('Backend unreachable. Using fallback logic.');
+                    setOtpError('Backend server is not running on port 5000.');
                 } else {
                     setOtpError(err.message);
                 }
