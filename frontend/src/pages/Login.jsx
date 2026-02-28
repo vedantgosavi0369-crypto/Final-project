@@ -153,33 +153,29 @@ export default function Login() {
         }
 
         if (validateForm()) {
-            if (role === 'patient') {
-                try {
-                    // DEMO/HACKATHON MODE: 
-                    // Bypass Supabase Auth email limits by using our custom backend OTP
-                    const res = await fetch('http://localhost:5000/api/send-otp', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email })
-                    });
+            try {
+                // DEMO/HACKATHON MODE: 
+                // Both Roles (patient and doctor) bypass Supabase Auth email limits by using our custom backend OTP
+                const res = await fetch('http://localhost:5000/api/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
 
-                    if (!res.ok) {
-                        const errorData = await res.json();
-                        throw new Error(errorData.error || 'Failed to send OTP');
-                    }
-
-                    setFormMode('otp');
-                } catch (err) {
-                    console.error('Error sending custom OTP:', err);
-                    if (err.message === 'Failed to fetch' || err.message.includes('fetch')) {
-                        console.warn('Backend unreachable. Proceeding with mock UI flow for frontend testing.');
-                        setFormMode('otp');
-                    } else {
-                        setErrors({ ...errors, email: err.message || 'Registration failed. Please try again.' });
-                    }
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.error || 'Failed to send OTP');
                 }
-            } else if (role === 'doctor') {
-                navigate('/doctor-profile');
+
+                setFormMode('otp');
+            } catch (err) {
+                console.error('Error sending custom OTP:', err);
+                if (err.message === 'Failed to fetch' || err.message.includes('fetch')) {
+                    console.warn('Backend unreachable. Proceeding with mock UI flow for frontend testing.');
+                    setFormMode('otp');
+                } else {
+                    setErrors({ ...errors, email: err.message || 'Registration failed. Please try again.' });
+                }
             }
         }
     };
@@ -200,17 +196,23 @@ export default function Login() {
                 if (!res.ok) throw new Error(verifyData.error || 'Invalid OTP');
 
                 // If verified successfully, we bypass the complete backend registration for the demo
-                // and proceed straight to the dashboard profile onboarding
-                const mockPatientId = `P-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
-                setGeneratedId(mockPatientId);
+                const mockId = role === 'patient'
+                    ? `P-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`
+                    : `DOC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-                navigate('/patient-profile', {
-                    state: {
-                        email,
-                        role: 'patient',
-                        patientId: mockPatientId
-                    }
-                });
+                setGeneratedId(mockId);
+
+                if (role === 'doctor') {
+                    navigate('/doctor-setup', { state: { email, role: 'doctor' } });
+                } else {
+                    navigate('/patient-profile', {
+                        state: {
+                            email,
+                            role: 'patient',
+                            patientId: mockId
+                        }
+                    });
+                }
             } catch (err) {
                 console.error('Full Error Object (Verify OTP):', err);
                 if (err.message === 'Failed to fetch' || err.message.includes('fetch')) {
@@ -415,23 +417,6 @@ export default function Login() {
                                     Login as {role.charAt(0).toUpperCase() + role.slice(1)}
                                 </motion.button>
 
-                                {/* bypass buttons for development/testing */}
-                                <div className="mt-4 space-y-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => navigate('/dashboard', { state: { role: 'patient' } })}
-                                        className="w-full py-2 text-sm font-medium text-[#1A3668] hover:text-[#2D7A4D] transition-colors border border-[#1A3668]/20 rounded-lg hover:bg-blue-50"
-                                    >
-                                        View Patient Dashboard
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => navigate('/dashboard', { state: { role: 'doctor' } })}
-                                        className="w-full py-2 text-sm font-medium text-[#1A3668] hover:text-[#2D7A4D] transition-colors border border-[#1A3668]/20 rounded-lg hover:bg-blue-50"
-                                    >
-                                        View Doctor Dashboard
-                                    </button>
-                                </div>
                             </form>
                         </motion.div>
                     )}

@@ -9,6 +9,7 @@ import PatientProfile from './components/PatientProfile';
 import CursorFollower from './components/CursorFollower';
 import HelpSidebar from './components/HelpSidebar';
 import SplashScreen from './components/SplashScreen';
+import DoctorSetup from './pages/DoctorSetup';
 
 function App() {
   const [isLaunching, setIsLaunching] = useState(true);
@@ -34,6 +35,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin" element={<AdminPortal />} />
           <Route path="/doctor-profile" element={<DoctorProfile />} />
+          <Route path="/doctor-setup" element={<DoctorSetup />} />
           <Route path="/patient-profile" element={<PatientProfile />} />
           <Route path="/password-creation" element={<PasswordCreation />} />
           <Route path="*" element={<Navigate to="/" replace />} />
