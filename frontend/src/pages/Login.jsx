@@ -215,13 +215,26 @@ export default function Login() {
                 if (!res.ok) throw new Error(backendData.error || 'Failed to complete registration');
 
                 setGeneratedId(backendData.patientId);
-                setFormMode('success');
+                // Instead of success state, navigate the user to input their health vital data
+                navigate('/patient-profile', {
+                    state: {
+                        email,
+                        role: 'patient',
+                        patientId: backendData.patientId
+                    }
+                });
             } catch (err) {
                 console.error('Full Error Object (Verify OTP):', err);
                 if (err.message === 'Failed to fetch' || err.message.includes('fetch')) {
                     console.warn('Backend unreachable. Proceeding with mock UI flow for frontend testing.');
                     setGeneratedId(`P-${new Date().getFullYear()}-MOCK`);
-                    setFormMode('success');
+                    navigate('/patient-profile', {
+                        state: {
+                            email,
+                            role: 'patient',
+                            patientId: `P-${new Date().getFullYear()}-MOCK`
+                        }
+                    });
                 } else {
                     setOtpError(err.message);
                 }
@@ -271,6 +284,7 @@ export default function Login() {
                 navigate('/dashboard', {
                     state: {
                         email,
+                        role,
                         isReturningPatient: true,
                         patientId: patientData?.patient_id
                     }
@@ -282,6 +296,7 @@ export default function Login() {
                     navigate('/dashboard', {
                         state: {
                             email,
+                            role,
                             isReturningPatient: true,
                             patientId: `P-${new Date().getFullYear()}-MOCK`
                         }
@@ -423,14 +438,14 @@ export default function Login() {
                                 <div className="mt-4 space-y-2">
                                     <button
                                         type="button"
-                                        onClick={() => navigate('/dashboard')}
+                                        onClick={() => navigate('/dashboard', { state: { role: 'patient' } })}
                                         className="w-full py-2 text-sm font-medium text-[#1A3668] hover:text-[#2D7A4D] transition-colors border border-[#1A3668]/20 rounded-lg hover:bg-blue-50"
                                     >
                                         View Patient Dashboard
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => navigate('/dashboard')}
+                                        onClick={() => navigate('/dashboard', { state: { role: 'doctor' } })}
                                         className="w-full py-2 text-sm font-medium text-[#1A3668] hover:text-[#2D7A4D] transition-colors border border-[#1A3668]/20 rounded-lg hover:bg-blue-50"
                                     >
                                         View Doctor Dashboard
@@ -588,42 +603,7 @@ export default function Login() {
                         </motion.div>
                     )}
 
-                    {formMode === 'success' && (
-                        <motion.div
-                            key="success"
-                            initial="initial" animate="in" exit="out" variants={pageVariants} transition={pageTransition}
-                            className="w-full flex flex-col items-center text-center py-4"
-                        >
-                            <motion.div
-                                initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.2 }}
-                                className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 border-4 border-white shadow-sm"
-                            >
-                                <CheckCircle2 className="w-8 h-8 text-[#2D7A4D]" />
-                            </motion.div>
-                            <h2 className="text-2xl font-bold text-[#1A3668] mb-2">Registration Successful!</h2>
-                            <p className="text-sm text-gray-500 font-medium mb-6">Please save your unique Patient ID.</p>
-
-                            <div className="w-full p-4 bg-green-50/90 backdrop-blur-sm border border-green-200 rounded-xl mb-8 shadow-inner">
-                                <span className="block text-xs text-[#2D7A4D] font-bold mb-2 tracking-wide uppercase">Your Patient ID</span>
-                                <code className="text-2xl text-[#1A3668] font-mono font-bold">{generatedId}</code>
-                            </div>
-
-                            <motion.button
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => {
-                                    setFormMode('login');
-                                    setEmail('');
-                                    setFullName('');
-                                    setPassword('');
-                                    setConfirmPassword('');
-                                    setOtp('');
-                                }}
-                                className="w-full py-2.5 bg-[#2D7A4D] text-white font-bold rounded-lg shadow-md hover:bg-[#1e5a37] hover:shadow-lg transition-all border border-[#2D7A4D]/50 focus:ring-2 focus:ring-[#1A3668] focus:outline-none"
-                            >
-                                Go to Patient Login
-                            </motion.button>
-                        </motion.div>
-                    )}
+                    {/* success block removed as we route direct to patient profile */}
                 </AnimatePresence>
             </div>
         </div>

@@ -23,6 +23,10 @@ const otpStore = {};
 // in-memory access log for Scan-to-Treat (will also attempt DB insert)
 const accessLogs = [];
 
+// in-memory store for Real-Time ID Access Requests
+// { requestId: { doctorEmail, patientId, status: 'pending' | 'approved' | 'denied', patientData: null, createdAt } }
+const activeRequests = {};
+
 // transporter configuration using environment variables
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -112,6 +116,83 @@ app.post('/api/scan-access', async (req, res) => {
         return res.status(401).json({ error: err?.message || 'authentication failed' });
     }
 });
+
+// --- REAL-TIME ID SEARCH & APPROVAL ENDPOINTS ---
+
+// 1. Doctor requests access to a patient's ID
+app.post('/api/request-patient-access', async (req, res) => {
+    const { doctorEmail, patientId } = req.body;
+    if (!doctorEmail || !patientId) return res.status(400).json({ error: 'Missing doctorEmail or patientId' });
+
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+    activeRequests[requestId] = {
+        requestId,
+        doctorEmail,
+        patientId,
+        status: 'pending',
+        patientData: null,
+        createdAt: Date.now()
+    };
+
+    console.log(`[ID Request] ${doctorEmail} requested access to ${patientId} (ReqID: ${requestId})`);
+    res.json({ requestId, status: 'pending' });
+});
+
+// 2. Patient polls to see if any doctor is requesting access to their ID
+//    (In production, patient ID should be derived from their secure auth token, but we pass it for the hackathon demo)
+app.get('/api/check-access-requests', (req, res) => {
+    const { patientId } = req.query;
+    if (!patientId) return res.status(400).json({ error: 'patientId query parameter required' });
+
+    // Find the most recent pending request for this patient
+    const pendingRequests = Object.values(activeRequests)
+        .filter(req => req.patientId === patientId && req.status === 'pending')
+        .sort((a, b) => b.createdAt - a.createdAt);
+
+    if (pendingRequests.length > 0) {
+        // Return the most recent one
+        return res.json({ request: pendingRequests[0] });
+    }
+
+    res.json({ request: null });
+});
+
+// 3. Patient approves or denies the request
+app.post('/api/approve-access-request', (req, res) => {
+    const { requestId, status, patientData } = req.body; // status: 'approved' | 'denied'
+
+    if (!activeRequests[requestId]) {
+        return res.status(404).json({ error: 'Request not found or expired' });
+    }
+
+    activeRequests[requestId].status = status;
+
+    if (status === 'approved') {
+        activeRequests[requestId].patientData = patientData;
+        console.log(`[ID Request] Request ${requestId} APPROVED by patient.`);
+    } else {
+        console.log(`[ID Request] Request ${requestId} DENIED by patient.`);
+    }
+
+    res.json({ success: true, status });
+});
+
+// 4. Doctor polls to see if the patient has approved the request
+app.get('/api/check-request-status', (req, res) => {
+    const { requestId } = req.query;
+    if (!requestId) return res.status(400).json({ error: 'requestId required' });
+
+    const request = activeRequests[requestId];
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+
+    res.json({
+        status: request.status,
+        patientData: request.patientData
+    });
+});
+
+// --- END REAL-TIME ID SEARCH ENDPOINTS ---
 
 // verify OTP and check if patient exists
 app.post('/api/verify-otp', async (req, res) => {

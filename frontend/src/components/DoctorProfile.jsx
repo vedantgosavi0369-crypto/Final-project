@@ -177,6 +177,21 @@ export default function DoctorProfile() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        // Save to localStorage for Admin Portal interception
+        const newApplication = {
+            id: `DOC-${Date.now()}`,
+            name: formData.name || 'New Applicant',
+            licenseId: formData.certificationNumber || 'Pending',
+            status: 'pending',
+            date: new Date().toISOString().split('T')[0],
+            email: formData.email,
+            hospital: formData.hospital
+        };
+
+        const existingApps = JSON.parse(localStorage.getItem('adminPendingDoctors') || '[]');
+        localStorage.setItem('adminPendingDoctors', JSON.stringify([newApplication, ...existingApps]));
+
         setIsSubmitted(true);
     };
 
