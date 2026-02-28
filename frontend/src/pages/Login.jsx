@@ -156,7 +156,7 @@ export default function Login() {
             try {
                 // DEMO/HACKATHON MODE: 
                 // Both Roles (patient and doctor) bypass Supabase Auth email limits by using our custom backend OTP
-                const res = await fetch('http://localhost:5000/api/send-otp', {
+                const res = await fetch('https://jeevan-connect.onrender.com/api/send-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email })
@@ -186,7 +186,7 @@ export default function Login() {
         if (otp.length > 0) {
             try {
                 // Verify custom OTP via backend
-                const res = await fetch('http://localhost:5000/api/verify-otp', {
+                const res = await fetch('https://jeevan-connect.onrender.com/api/verify-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, otp })
