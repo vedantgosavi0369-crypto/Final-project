@@ -75,6 +75,20 @@ export default function AdminPortal() {
         setNotificationStatus(`Successfully verified credentials for ${dr?.name || 'Doctor'} and sent secure access link.`);
         setTimeout(() => setNotificationStatus(''), 4000);
     };
+    const handleRunSimulation = () => {
+        const demoDoctor = {
+            id: `DEMO-${Date.now()}`,
+            name: 'Dr. Sarah Connor',
+            licenseId: 'MED-55019',
+            status: 'pending',
+            date: new Date().toISOString().split('T')[0],
+            email: 'sarah.connor@demo-hospital.com'
+        };
+
+        setApplicants(prev => [demoDoctor, ...prev]);
+        setNotificationStatus('Incoming New Doctor Registration Request Detected.');
+        setTimeout(() => setNotificationStatus(''), 4000);
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 p-6 md:p-12 relative">
@@ -87,14 +101,26 @@ export default function AdminPortal() {
             </button>
 
             <div className="max-w-4xl mx-auto mt-12 md:mt-0">
-                <div className="flex items-center gap-3 mb-8 pb-4 border-b border-gray-200">
-                    <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center shadow-sm">
-                        <ShieldAlert className="w-6 h-6" />
+                <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center shadow-sm">
+                            <ShieldAlert className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900">Admin Security Portal</h1>
+                            <p className="text-sm text-gray-500 font-medium">Doctor Credential Verification. Login-only mode.</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Admin Security Portal</h1>
-                        <p className="text-sm text-gray-500 font-medium">Doctor Credential Verification. Login-only mode.</p>
-                    </div>
+
+                    <button
+                        type="button"
+                        onClick={handleRunSimulation}
+                        className="py-3 px-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all text-sm font-bold shadow-md hover:shadow-lg flex items-center gap-2 relative overflow-hidden group"
+                    >
+                        <div className="absolute inset-0 bg-white/20 w-0 group-hover:w-full transition-all duration-300 ease-out"></div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-zap"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                        Simulate Incoming Request
+                    </button>
                 </div>
 
                 {notificationStatus && (

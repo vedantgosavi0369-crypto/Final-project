@@ -8,7 +8,8 @@ import QRScanner from '../components/QRScanner';
 import EmergencyOverride from '../components/EmergencyOverride';
 import ZeroTrustGatekeeper from '../components/ZeroTrustGatekeeper';
 import ClinicalSummarizer from '../components/ClinicalSummarizer';
-import { User, Activity, FileText, Phone, Clock, AlertCircle, CheckCircle2, ChevronRight, UploadCloud, Lock, File, X } from 'lucide-react';
+import { User, Activity, FileText, Phone, Clock, AlertCircle, CheckCircle2, ChevronRight, UploadCloud, Lock, File, X, TrendingUp } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function Dashboard() {
     const location = useLocation();
@@ -61,6 +62,16 @@ export default function Dashboard() {
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [newRecordTitle, setNewRecordTitle] = useState('');
     const [newRecordFile, setNewRecordFile] = useState(null);
+
+    // Dummy data for Blood Pressure Chart
+    const bpData = [
+        { date: 'Oct 12', systolic: 120, diastolic: 80 },
+        { date: 'Nov 05', systolic: 122, diastolic: 82 },
+        { date: 'Dec 01', systolic: 118, diastolic: 78 },
+        { date: 'Jan 15', systolic: 125, diastolic: 85 },
+        { date: 'Feb 10', systolic: 121, diastolic: 81 },
+        { date: 'Feb 26', systolic: 119, diastolic: 79 },
+    ];
 
     useEffect(() => {
         const fetchPatientData = async () => {
@@ -351,6 +362,40 @@ export default function Dashboard() {
         }
     };
 
+    const handleRunSimulation = async () => {
+        setIdSearchQuery('DEMO-2026-XQZ');
+        setRequestStatus('pending');
+
+        // Wait 1.5 seconds to simulate network request and patient approval
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        setRequestStatus('approved');
+
+        // Populate realistic comprehensive patient data
+        const demoPatient = {
+            id: 'DEMO-2026-XQZ',
+            name: 'Sarah Connor',
+            age: 42,
+            bloodGroup: 'O+',
+            email: 'sarah.connor@example.com',
+            emergencyContact: '(555) 019-8472',
+            walletAddress: '0x1A2b3C4d5E6f7G8h9I0J1K2L3M4N5O6P7Q8R9S0T',
+            allergies: 'Penicillin, Peanuts',
+            chronicConditions: 'Asthma, Mild Hypertension',
+            medicalRecords: [
+                { id: 'doc_1', title: 'Cardiac MRI Results', date: '2026-01-15', type: 'pdf', size: '12.4 MB', hash: '0xabc123456def7890abc' },
+                { id: 'doc_2', title: 'Comprehensive Blood Panel', date: '2025-11-22', type: 'pdf', size: '4.2 MB', hash: '0xdef789012abc3456def' },
+                { id: 'doc_3', title: 'Vaccination History', date: '2024-08-10', type: 'png', size: '1.1 MB', hash: '0x7890abc123456def789' }
+            ],
+            isHackathonDemo: true
+        };
+
+        setScannedPatient(demoPatient);
+        // Set expiry for 1 hour
+        setAccessExpiryTime(new Date(Date.now() + 60 * 60 * 1000).toISOString());
+        setUnlockedTier('life_packet');
+    };
+
     // Simulated Legacy Import Data Sanitization
     const sampleClinicalNotes = DOMPurify.sanitize("Patient presented with a 3-day history of acute shortness of breath and mild chest pain. Vital signs indicate elevated heart rate. ECG shows sinus tachycardia without ischemic changes. Patient denies recent travel or exposure to illness. Past medical history significant for mild asthma controlled on albuterol PRN. Plan: Order stat chest X-ray and D-dimer to rule out PE, continue close monitoring.");
 
@@ -631,6 +676,20 @@ export default function Dashboard() {
                                     <p className="text-sm font-semibold text-gray-800">{doctorProfile.hospital}</p>
                                 </div>
                             </div>
+
+                            {/* Doctor Identity QR Code */}
+                            <div className="mt-6 w-full flex flex-col items-center bg-gray-50 rounded-xl p-4 border border-gray-100/50">
+                                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-3">Doctor Identity QR</p>
+                                <div className="bg-white p-2 rounded-lg shadow-sm">
+                                    <QRCodeGenerator
+                                        value={JSON.stringify({
+                                            type: 'doctor',
+                                            ...doctorProfile
+                                        })}
+                                        size={140}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </motion.div>
 
@@ -661,12 +720,23 @@ export default function Dashboard() {
                                                 required
                                             />
                                         </div>
-                                        <button
-                                            type="submit"
-                                            className="w-full py-4 px-8 bg-[#1A3668] text-white rounded-xl hover:bg-[#12264a] transition-all text-sm font-bold shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-                                        >
-                                            Send Secure Access Request
-                                        </button>
+                                        <div className="flex flex-col sm:flex-row gap-3">
+                                            <button
+                                                type="submit"
+                                                className="w-full sm:w-1/2 py-4 px-4 bg-[#1A3668] text-white rounded-xl hover:bg-[#12264a] transition-all text-sm font-bold shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                                            >
+                                                Send Request
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleRunSimulation}
+                                                className="w-full sm:w-1/2 py-4 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all text-sm font-bold shadow-md hover:shadow-lg flex items-center justify-center gap-2 relative overflow-hidden group"
+                                            >
+                                                <div className="absolute inset-0 bg-white/20 w-0 group-hover:w-full transition-all duration-300 ease-out"></div>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-zap"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                                                Run Auto-Demo
+                                            </button>
+                                        </div>
                                     </form>
                                 </>
                             ) : requestStatus === 'pending' ? (
@@ -897,12 +967,39 @@ export default function Dashboard() {
 
                         </motion.div>
 
-                        {/* Right Column: Medical Records */}
+                        {/* Right Column: Medical Records & Vitals */}
                         <motion.div
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className="lg:col-span-2"
+                            className="lg:col-span-2 space-y-6"
                         >
+                            {/* Blood Pressure Graph */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                <div className="flex items-center justify-between mb-6 border-b pb-4">
+                                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                        <TrendingUp className="text-red-500 w-5 h-5" />
+                                        Blood Pressure Trends
+                                    </h3>
+                                    <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">Recent Checkups</span>
+                                </div>
+                                <div className="h-[250px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={bpData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} domain={['dataMin - 10', 'dataMax + 10']} />
+                                            <Tooltip
+                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                itemStyle={{ fontWeight: 'bold' }}
+                                            />
+                                            <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                                            <Line type="monotone" name="Systolic (mmHg)" dataKey="systolic" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                                            <Line type="monotone" name="Diastolic (mmHg)" dataKey="diastolic" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-full">
                                 <div className="flex items-center justify-between mb-6 border-b pb-4">
                                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
